@@ -40,7 +40,6 @@ def observation(xTrue, xd, u, RFID):
 
     xTrue = motion_model(xTrue, u)
 
-    # add noise to gps x-y
     z = np.zeros((0, 4))
 
     for i in range(len(RFID[:, 0])):
