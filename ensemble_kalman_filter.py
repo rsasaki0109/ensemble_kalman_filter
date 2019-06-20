@@ -23,7 +23,7 @@ SIM_TIME = 50.0  # simulation time [s]
 MAX_RANGE = 20.0  # maximum observation range
 
 # Ensemble Kalman filter parameter
-NP = 10  # Number of Particle
+NP = 20  # Number of Particle
 
 show_animation = True
 
@@ -80,11 +80,11 @@ def motion_model(x, u):
 
 
 def calc_LM_Pos(x, lms):
-    lmps=np.zeros((2*lms.shape[0],1))
+    lms_pos=np.zeros((2*lms.shape[0],1))
     for (i,lm) in enumerate(lms):
-        lmps[2*i] = x[0, 0] + lm[0] * math.cos(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]
-        lmps[2*i+1] = x[1, 0] + lm[0] * math.sin(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]
-    return lmps
+        lms_pos[2*i] = x[0, 0] + lm[0] * math.cos(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]/np.sqrt(2)
+        lms_pos[2*i+1] = x[1, 0] + lm[0] * math.sin(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]/np.sqrt(2)
+    return lms_pos
 
 def calc_covariance(xEst, px):
     cov = np.zeros((3, 3))
@@ -100,7 +100,7 @@ def enkf_localization(px, xEst, PEst, z, u):
     """
     Localization with Ensemble Kalman filter
     """
-    pz = np.zeros((z.shape[0]*2, NP))  # Particle store
+    pz = np.zeros((z.shape[0]*2, NP))  # Particle store of z
     for ip in range(NP):
         x = np.array([px[:, ip]]).T
 
@@ -110,8 +110,8 @@ def enkf_localization(px, xEst, PEst, z, u):
         ud = np.array([[ud1, ud2]]).T
         x = motion_model(x, ud)
         px[:, ip] = x[:, 0]
-        zp=calc_LM_Pos(x, z)
-        pz[:, ip] = zp[:, 0]
+        z_pos=calc_LM_Pos(x, z)
+        pz[:, ip] = z_pos[:, 0]
 
     x_ave=np.mean(px, axis=1)
     x_dif=px - np.tile(x_ave,(NP,1)).T
@@ -122,10 +122,11 @@ def enkf_localization(px, xEst, PEst, z, u):
     U = 1/(NP-1)* x_dif @ z_dif.T
     V = 1/(NP-1)* z_dif @ z_dif.T 
 
-    K = U @ np.linalg.inv(V)
-    y = z[:,[2,3]].reshape(-1,)
+    K = U @ np.linalg.inv(V) # Kalman Gain
 
-    px_hat=px + K @ (np.tile(y,(NP,1)).T- pz)
+    z_lm_pos = z[:,[2,3]].reshape(-1,)
+
+    px_hat=px + K @ (np.tile(z_lm_pos,(NP,1)).T- pz)
 
     xEst=np.average(px_hat, axis=1).reshape(4,1)
     pEst=calc_covariance(xEst, px_hat)
@@ -188,7 +189,7 @@ def main():
     xTrue = np.zeros((4, 1))
     PEst = np.eye(4)
 
-    px = np.zeros((4, NP))  # Particle store
+    px = np.zeros((4, NP))  # Particle store of x
 
     xDR = np.zeros((4, 1))  # Dead reckoning
 
