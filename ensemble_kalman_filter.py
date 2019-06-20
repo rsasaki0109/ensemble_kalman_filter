@@ -10,10 +10,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-# Estimation parameter of EnKF
-Q = np.diag([0.1])**2  # range error
-R = np.diag([1.0, np.deg2rad(40.0)])**2  # input error
-
 #  Simulation parameter
 Qsim = np.diag([0.2, np.deg2rad(1.0)])**2
 Rsim = np.diag([1.0, np.deg2rad(30.0)])**2
@@ -78,12 +74,12 @@ def motion_model(x, u):
     return x
 
 
-def calc_LM_Pos(x, lms):
-    lms_pos=np.zeros((2*lms.shape[0],1))
-    for (i,lm) in enumerate(lms):
-        lms_pos[2*i] = x[0, 0] + lm[0] * math.cos(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]/np.sqrt(2)
-        lms_pos[2*i+1] = x[1, 0] + lm[0] * math.sin(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]/np.sqrt(2)
-    return lms_pos
+def calc_LM_Pos(x, landmarks):
+    landmarks_pos=np.zeros((2*landmarks.shape[0],1))
+    for (i,lm) in enumerate(landmarks):
+        landmarks_pos[2*i] = x[0, 0] + lm[0] * math.cos(x[2, 0] + lm[1]) + np.random.randn() * Qsim[0, 0]/np.sqrt(2)
+        landmarks_pos[2*i+1] = x[1, 0] + lm[0] * math.sin(x[2, 0] + lm[1]) + np.random.randn() * Qsim[0, 0]/np.sqrt(2)
+    return landmarks_pos
 
 def calc_covariance(xEst, px):
     cov = np.zeros((3, 3))
