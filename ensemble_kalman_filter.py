@@ -82,8 +82,8 @@ def motion_model(x, u):
 def calc_LM_Pos(x, lms):
     lmps=np.zeros((2*lms.shape[0],1))
     for (i,lm) in enumerate(lms):
-        lmps[2*i] = x[0, 0] + lm[0] * math.cos(x[2, 0] + lm[1]) + np.random.randn() * Qsim[0, 0]
-        lmps[2*i+1] = x[1, 0] + lm[0] * math.sin(x[2, 0] + lm[1]) + np.random.randn() * Qsim[0, 0]
+        lmps[2*i] = x[0, 0] + lm[0] * math.cos(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]
+        lmps[2*i+1] = x[1, 0] + lm[0] * math.sin(x[2, 0] + lm[1]) + np.random.randn() * Q[0, 0]
     return lmps
 
 def calc_covariance(xEst, px):
