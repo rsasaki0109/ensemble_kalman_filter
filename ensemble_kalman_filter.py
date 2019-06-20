@@ -96,7 +96,7 @@ def calc_covariance(xEst, px):
     return cov
 
 
-def enkf_localization(px, xEst, PEst, z, u,xDR):
+def enkf_localization(px, xEst, PEst, z, u):
     """
     Localization with Ensemble Kalman filter
     """
@@ -203,7 +203,7 @@ def main():
 
         xTrue, z, xDR, ud = observation(xTrue, xDR, u, RFID)
 
-        xEst, PEst, px = enkf_localization(px, xEst, PEst, z, ud,xDR)
+        xEst, PEst, px = enkf_localization(px, xEst, PEst, z, ud)
 
         # store data history
         hxEst = np.hstack((hxEst, xEst))
