@@ -39,18 +39,16 @@ def observation(xTrue, xd, u, RFID):
 
     xTrue = motion_model(xTrue, u)
 
-    z = np.zeros((0, 4))
+    z = np.zeros((0, 3))
 
     for i in range(len(RFID[:, 0])):
 
         dx = RFID[i, 0] - xTrue[0, 0]
         dy = RFID[i, 1] - xTrue[1, 0]
         d = math.sqrt(dx**2 + dy**2)
-        angle = pi_2_pi(math.atan2(dy, dx) - xTrue[2, 0])
         if d <= MAX_RANGE:
             dn = d + np.random.randn() * Qsim[0, 0]  # add noise
-            anglen = angle + np.random.randn() * Qsim[1, 1]  # add noise
-            zi = np.array([dn, anglen, RFID[i, 0], RFID[i, 1]])
+            zi = np.array([dn, RFID[i, 0], RFID[i, 1]])
             z = np.vstack((z, zi))
 
     # add noise to input
@@ -77,18 +75,6 @@ def motion_model(x, u):
     return x
 
 
-def calc_LM_Pos(x, landmarks):
-    landmarks_pos = np.zeros((2*landmarks.shape[0], 1))
-    for (i, lm) in enumerate(landmarks):
-        landmarks_pos[2*i] = x[0, 0] + lm[0] * \
-            math.cos(x[2, 0] + lm[1]) + np.random.randn() * \
-            Qsim[0, 0]/np.sqrt(2)
-        landmarks_pos[2*i+1] = x[1, 0] + lm[0] * \
-            math.sin(x[2, 0] + lm[1]) + np.random.randn() * \
-            Qsim[0, 0]/np.sqrt(2)
-    return landmarks_pos
-
-
 def calc_covariance(xEst, px):
     cov = np.zeros((3, 3))
 
@@ -103,7 +89,7 @@ def enkf_localization(px, xEst, PEst, z, u):
     """
     Localization with Ensemble Kalman filter
     """
-    pz = np.zeros((z.shape[0]*2, NP))  # Particle store of z
+    pz = np.zeros((z.shape[0], NP))  # Particle store of z
     for ip in range(NP):
         x = np.array([px[:, ip]]).T
 
@@ -113,8 +99,12 @@ def enkf_localization(px, xEst, PEst, z, u):
         ud = np.array([[ud1, ud2]]).T
         x = motion_model(x, ud)
         px[:, ip] = x[:, 0]
-        z_pos = calc_LM_Pos(x, z)
-        pz[:, ip] = z_pos[:, 0]
+
+        for i in range(len(z[:, 0])):
+            dx = x[0, 0] - z[i, 1]
+            dy = x[1, 0] - z[i, 2]
+            prez = math.sqrt(dx**2 + dy**2) + np.random.randn() * Qsim[0, 0]  # add noise
+            pz[i, ip] = prez
 
     x_ave = np.mean(px, axis=1)
     x_dif = px - np.tile(x_ave, (NP, 1)).T
@@ -127,9 +117,7 @@ def enkf_localization(px, xEst, PEst, z, u):
 
     K = U @ np.linalg.inv(V)  # Kalman Gain
 
-    z_lm_pos = z[:, [2, 3]].reshape(-1,)
-
-    px_hat = px + K @ (np.tile(z_lm_pos, (NP, 1)).T - pz)
+    px_hat = px + K @ (np.tile(z[:,0], (NP, 1)).T - pz)
 
     xEst = np.average(px_hat, axis=1).reshape(4, 1)
     PEst = calc_covariance(xEst, px_hat)
@@ -171,10 +159,6 @@ def plot_covariance_ellipse(xEst, PEst):  # pragma: no cover
     px = np.array(fx[0, :] + xEst[0, 0]).flatten()
     py = np.array(fx[1, :] + xEst[1, 0]).flatten()
     plt.plot(px, py, "--r")
-
-
-def pi_2_pi(angle):
-    return (angle + math.pi) % (2 * math.pi) - math.pi
 
 
 def main():
@@ -219,7 +203,7 @@ def main():
             plt.cla()
 
             for i in range(len(z[:, 0])):
-                plt.plot([xTrue[0, 0], z[i, 2]], [xTrue[1, 0], z[i, 3]], "-k")
+                plt.plot([xTrue[0, 0], z[i, 1]], [xTrue[1, 0], z[i, 2]], "-k")
             plt.plot(RFID[:, 0], RFID[:, 1], "*k")
             plt.plot(px[0, :], px[1, :], ".r")
             plt.plot(np.array(hxTrue[0, :]).flatten(),
